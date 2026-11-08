@@ -1,0 +1,8 @@
+# ROM ทดสอบ: ห้าม deploy
+vendor/test-roms/
+*.gba
+*.sav
+
+# เครื่องมือพัฒนา
+node_modules/
+.claude/

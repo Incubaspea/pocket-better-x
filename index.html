@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="POCKET BETTER X">
+<meta name="theme-color" content="#18223a">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>POCKET BETTER X</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ================= คลังเกม ================= -->
+<div id="library">
+  <div id="libHead">
+    <div id="libBrand">POCKET <em>BETTER</em> X</div>
+    <div id="libBtns">
+      <div class="iconBtn" id="btnSettings">⚙</div>
+      <div class="addBtn" id="btnAdd">＋ เพิ่มเกม<input type="file" id="addFile" multiple></div>
+    </div>
+  </div>
+  <div id="grid"></div>
+  <div id="empty">
+    <div class="emptyIcon">🎮</div>
+    <div class="emptyTitle">ยังไม่มีเกม</div>
+    <div class="emptyText">กด “＋ เพิ่มเกม” แล้วเลือกไฟล์ .gba ที่ดัมพ์จากตลับของคุณเอง หรือเกม Homebrew</div>
+  </div>
+  <div id="libFoot"></div>
+</div>
+
+<!-- ================= ตัวเครื่อง ================= -->
+<div id="player" class="hide">
+  <!-- ปุ่มไหล่ -->
+  <div class="shoulder" id="btnL" data-key="9">L</div>
+  <div class="shoulder" id="btnR" data-key="8">R</div>
+
+  <!-- ชิปด้านบน -->
+  <div id="chips">
+    <div class="chip" id="chipMenu" data-act="menu">☰ เมนู</div>
+    <div class="chip" id="chipRew" data-act="rewind">⏪</div>
+    <div class="chip" id="chipFast" data-act="fast">▶▶</div>
+  </div>
+
+  <!-- กรอบจอ -->
+  <div id="bezel">
+    <div id="bezelHead">
+      <span id="led"></span><span class="pwr">PWR</span><span id="stripe"></span><span id="gameTitle">POCKET BETTER X</span>
+    </div>
+    <div id="screenBox">
+      <canvas id="screen" width="240" height="160"></canvas>
+      <div id="spd">--%</div>
+    </div>
+  </div>
+
+  <!-- D-pad -->
+  <div id="dpad">
+    <div class="dv"></div><div class="dh"></div>
+    <div class="dhub"></div>
+  </div>
+
+  <!-- A / B -->
+  <div class="face" id="btnA" data-key="0"></div>
+  <div class="face" id="btnB" data-key="1"></div>
+  <div class="faceLabel" id="lblA">A</div>
+  <div class="faceLabel" id="lblB">B</div>
+  <div id="btnAB" data-key="0,1"></div>
+
+  <!-- Select / Start -->
+  <div class="pill" id="btnSelect" data-key="2"></div>
+  <div class="pill" id="btnStart" data-key="3"></div>
+  <div class="pillLabel" id="lblSelect">SELECT</div>
+  <div class="pillLabel" id="lblStart">START</div>
+
+  <!-- ลำโพง + แบรนด์ -->
+  <div id="speaker"></div>
+  <div id="brand">POCKET <em>BETTER</em> X</div>
+</div>
+
+<!-- ================= Bottom sheet ================= -->
+<div id="sheetWrap" class="hide">
+  <div id="sheetBg"></div>
+  <div id="sheet">
+    <div class="grab"></div>
+    <div id="sheetHead"><div id="sheetTitle"></div><div id="sheetClose">✕</div></div>
+    <div id="sheetBody"></div>
+    <div id="sheetNote"></div>
+  </div>
+</div>
+
+<!-- ================= กล่องโต้ตอบ ================= -->
+<div id="dlgWrap" class="hide">
+  <div id="dlg">
+    <div id="dlgTitle"></div>
+    <div id="dlgText"></div>
+    <input type="text" id="dlgInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <textarea id="dlgArea" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+    <div id="dlgBtns"></div>
+  </div>
+</div>
+
+<!-- ================= ภาพหน้าจอ ================= -->
+<div id="shotWrap" class="hide">
+  <div id="shotBox">
+    <div id="shotTitle">ภาพหน้าจอ</div>
+    <img id="shotImg" alt="ภาพหน้าจอ">
+    <div id="shotHint">กดค้างที่ภาพ แล้วเลือก “บันทึกภาพ” เพื่อเก็บลงแอปรูปภาพ</div>
+    <div id="shotBtns"><a class="dbtn" id="shotSave" href="#" download="screenshot.png">ดาวน์โหลด</a><div class="dbtn primary" id="shotClose">ปิด</div></div>
+  </div>
+</div>
+
+<!-- ตัวเลือกไฟล์ที่ซ่อนไว้ (ไม่ใส่ accept เพราะ iOS 12 จะไม่ให้เลือกไฟล์นามสกุลที่ไม่รู้จัก) -->
+<input type="file" id="savFile" class="hiddenFile">
+<input type="file" id="biosFile" class="hiddenFile">
+
+<div id="toast"></div>
+
+<script src="core/includes/TypedArrayShim.js"></script>
+<script src="core/Cartridge.js"></script>
+<script src="core/DMA.js"></script>
+<script src="core/Emulator.js"></script>
+<script src="core/Graphics.js"></script>
+<script src="core/RunLoop.js"></script>
+<script src="core/Memory.js"></script>
+<script src="core/IRQ.js"></script>
+<script src="core/JoyPad.js"></script>
+<script src="core/Serial.js"></script>
+<script src="core/Sound.js"></script>
+<script src="core/Timer.js"></script>
+<script src="core/Wait.js"></script>
+<script src="core/CPU.js"></script>
+<script src="core/Saves.js"></script>
+<script src="core/sound/FIFO.js"></script>
+<script src="core/sound/Channel1.js"></script>
+<script src="core/sound/Channel2.js"></script>
+<script src="core/sound/Channel3.js"></script>
+<script src="core/sound/Channel4.js"></script>
+<script src="core/CPU/ARM.js"></script>
+<script src="core/CPU/THUMB.js"></script>
+<script src="core/CPU/CPSR.js"></script>
+<script src="core/graphics/Renderer.js"></script>
+<script src="core/graphics/RendererShim.js"></script>
+<script src="core/graphics/RendererProxy.js"></script>
+<script src="core/graphics/BGTEXT.js"></script>
+<script src="core/graphics/BG2FrameBuffer.js"></script>
+<script src="core/graphics/BGMatrix.js"></script>
+<script src="core/graphics/AffineBG.js"></script>
+<script src="core/graphics/ColorEffects.js"></script>
+<script src="core/graphics/Mosaic.js"></script>
+<script src="core/graphics/OBJ.js"></script>
+<script src="core/graphics/OBJWindow.js"></script>
+<script src="core/graphics/Window.js"></script>
+<script src="core/graphics/Compositor.js"></script>
+<script src="core/memory/DMA0.js"></script>
+<script src="core/memory/DMA1.js"></script>
+<script src="core/memory/DMA2.js"></script>
+<script src="core/memory/DMA3.js"></script>
+<script src="core/cartridge/SaveDeterminer.js"></script>
+<script src="core/cartridge/SRAM.js"></script>
+<script src="core/cartridge/FLASH.js"></script>
+<script src="core/cartridge/EEPROM.js"></script>
+<script src="core/cartridge/GPIO.js"></script>
+<script src="core/glue/GfxGlueCode.js"></script>
+<script src="core/glue/XAudioJS/resampler.js"></script>
+<script src="core/glue/XAudioJS/XAudioServer.js"></script>
+<script src="core/glue/AudioGlueCode.js"></script>
+<script src="js/emu.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

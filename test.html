@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>PBX ทดสอบแกน</title>
+<style>
+  body { margin: 0; padding: 12px; background: #18223a; color: #e8ecf5; font: 14px -apple-system, "Segoe UI", sans-serif; }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  #wrap { position: relative; width: 480px; height: 320px; max-width: 100%; background: #10141d; border-radius: 8px; overflow: hidden; }
+  #screen { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #spd { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); color: #3f3; font: 12px monospace; padding: 2px 5px; }
+  .row { margin: 10px 0; }
+  .row button, .row label { margin: 0 6px 6px 0; }
+  button { background: #2b3a5e; color: #fff; border: 0; border-radius: 6px; padding: 8px 12px; font-size: 14px; }
+  button.coral { background: #ff6b4a; }
+  #log { font: 12px monospace; white-space: pre-wrap; color: #9fb0d0; max-height: 160px; overflow: auto; }
+</style>
+</head>
+<body>
+<h1>POCKET BETTER X — ทดสอบแกนจำลอง (เฟส 1)</h1>
+<div id="wrap"><canvas id="screen" width="240" height="160"></canvas><div id="spd">--%</div></div>
+
+<div class="row">
+  <button class="coral" data-rom="vendor/test-roms/memory.gba">memory.gba</button>
+  <button data-rom="vendor/test-roms/arm.gba">arm.gba</button>
+  <button data-rom="vendor/test-roms/thumb.gba">thumb.gba</button>
+  <label>ROM ของฉัน <input type="file" id="file" accept=".gba,.bin"></label>
+</div>
+<div class="row">
+  <button id="btnPlay">เล่น/หยุด</button>
+  <button id="btnReset">รีเซ็ต</button>
+  <button id="btnSnd">เสียง: เปิด</button>
+  <button id="btnFast">ความเร็ว x1</button>
+</div>
+<div class="row">คีย์บอร์ด: ลูกศร · X=A · Z=B · A=L · S=R · Enter=Start · Backspace=Select</div>
+<div id="log"></div>
+
+<script src="core/includes/TypedArrayShim.js"></script>
+<script src="core/Cartridge.js"></script>
+<script src="core/DMA.js"></script>
+<script src="core/Emulator.js"></script>
+<script src="core/Graphics.js"></script>
+<script src="core/RunLoop.js"></script>
+<script src="core/Memory.js"></script>
+<script src="core/IRQ.js"></script>
+<script src="core/JoyPad.js"></script>
+<script src="core/Serial.js"></script>
+<script src="core/Sound.js"></script>
+<script src="core/Timer.js"></script>
+<script src="core/Wait.js"></script>
+<script src="core/CPU.js"></script>
+<script src="core/Saves.js"></script>
+<script src="core/sound/FIFO.js"></script>
+<script src="core/sound/Channel1.js"></script>
+<script src="core/sound/Channel2.js"></script>
+<script src="core/sound/Channel3.js"></script>
+<script src="core/sound/Channel4.js"></script>
+<script src="core/CPU/ARM.js"></script>
+<script src="core/CPU/THUMB.js"></script>
+<script src="core/CPU/CPSR.js"></script>
+<script src="core/graphics/Renderer.js"></script>
+<script src="core/graphics/RendererShim.js"></script>
+<script src="core/graphics/RendererProxy.js"></script>
+<script src="core/graphics/BGTEXT.js"></script>
+<script src="core/graphics/BG2FrameBuffer.js"></script>
+<script src="core/graphics/BGMatrix.js"></script>
+<script src="core/graphics/AffineBG.js"></script>
+<script src="core/graphics/ColorEffects.js"></script>
+<script src="core/graphics/Mosaic.js"></script>
+<script src="core/graphics/OBJ.js"></script>
+<script src="core/graphics/OBJWindow.js"></script>
+<script src="core/graphics/Window.js"></script>
+<script src="core/graphics/Compositor.js"></script>
+<script src="core/memory/DMA0.js"></script>
+<script src="core/memory/DMA1.js"></script>
+<script src="core/memory/DMA2.js"></script>
+<script src="core/memory/DMA3.js"></script>
+<script src="core/cartridge/SaveDeterminer.js"></script>
+<script src="core/cartridge/SRAM.js"></script>
+<script src="core/cartridge/FLASH.js"></script>
+<script src="core/cartridge/EEPROM.js"></script>
+<script src="core/cartridge/GPIO.js"></script>
+<script src="core/glue/GfxGlueCode.js"></script>
+<script src="core/glue/XAudioJS/resampler.js"></script>
+<script src="core/glue/XAudioJS/XAudioServer.js"></script>
+<script src="core/glue/AudioGlueCode.js"></script>
+<script src="js/emu.js"></script>
+<script>
+(function () {
+  "use strict";
+  var logEl = document.getElementById("log");
+  function log(s) { logEl.textContent += s + "\n"; logEl.scrollTop = 1e9; }
+  window.onerror = function (m, src, line) { log("ERROR: " + m + " @" + src + ":" + line); };
+
+  var emu = new PBX(document.getElementById("screen"));
+  window.emu = emu; // สำหรับทดสอบอัตโนมัติ
+  window.lastSpeed = 0;
+  var spdEl = document.getElementById("spd");
+  emu.onSpeed(function (p) { window.lastSpeed = p; spdEl.textContent = Math.round(p) + "%"; });
+  emu.onStatus(function (on) { log("สถานะ: " + (on ? "กำลังเล่น" : "หยุด")); });
+  var saves = {};
+  emu.onSaveExport(function (name, data) { saves[name] = data; });
+  emu.setSaveImport(function (name, ok, fail) { if (saves[name]) ok(saves[name]); else fail(); });
+
+  function fetchBin(url) {
+    return new Promise(function (resolve, reject) {
+      var x = new XMLHttpRequest();
+      x.open("GET", url, true);
+      x.responseType = "arraybuffer";
+      x.onload = function () { if (x.status === 200 || x.status === 0) resolve(new Uint8Array(x.response)); else reject(new Error(url + " " + x.status)); };
+      x.onerror = function () { reject(new Error(url)); };
+      x.send();
+    });
+  }
+
+  var biosP = fetchBin("bios/cult-of-gba-bios.bin").then(function (b) { log("BIOS: " + b.length + " ไบต์"); return b; });
+
+  function run(rom, name) {
+    biosP.then(function (bios) {
+      emu.load(bios, rom);
+      emu.start();
+      log("เริ่ม " + name + " (" + rom.length + " ไบต์) ชื่อในตลับ: " + emu.gameName());
+    }).catch(function (e) { log("ERROR: " + e.message); });
+  }
+
+  var btns = document.querySelectorAll("[data-rom]");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function (ev) {
+      var url = ev.currentTarget.getAttribute("data-rom");
+      fetchBin(url).then(function (rom) { run(rom, url); }).catch(function (e) { log("ERROR: " + e.message); });
+    });
+  }
+  window.runUrl = function (url) { return fetchBin(url).then(function (rom) { run(rom, url); }); };
+
+  document.getElementById("file").addEventListener("change", function (ev) {
+    var f = ev.target.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { run(new Uint8Array(r.result), f.name); };
+    r.readAsArrayBuffer(f);
+  });
+
+  document.getElementById("btnPlay").addEventListener("click", function () {
+    if (emu.running) emu.stop(); else emu.start();
+  });
+  document.getElementById("btnReset").addEventListener("click", function () { emu.reset(); });
+  var sndOn = true;
+  document.getElementById("btnSnd").addEventListener("click", function (ev) {
+    sndOn = !sndOn;
+    emu.setAudioEnabled(sndOn);
+    ev.currentTarget.textContent = "เสียง: " + (sndOn ? "เปิด" : "ปิด");
+  });
+  var speeds = [1, 2, 3], si = 0;
+  document.getElementById("btnFast").addEventListener("click", function (ev) {
+    si = (si + 1) % speeds.length;
+    emu.setSpeed(speeds[si]);
+    emu.setAudioMuted(speeds[si] > 1);
+    ev.currentTarget.textContent = "ความเร็ว x" + speeds[si];
+  });
+
+  // ปลดล็อกเสียงด้วยการแตะ/คลิก/กดปุ่มครั้งแรก (iOS ต้องเป็น touchend)
+  var unlocked = false;
+  function unlock() {
+    if (unlocked) return;
+    unlocked = emu.unlockAudio();
+    if (unlocked) {
+      log("เสียง: " + emu.audioState());
+      setTimeout(function () { log("เสียง (หลัง 0.5 วิ): " + emu.audioState()); }, 500);
+    }
+  }
+  document.addEventListener("touchend", unlock, false);
+  document.addEventListener("click", unlock, false);
+  document.addEventListener("keydown", unlock, false);
+
+  var map = { ArrowRight: 4, ArrowLeft: 5, ArrowUp: 6, ArrowDown: 7, x: 0, X: 0, z: 1, Z: 1, a: 9, A: 9, s: 8, S: 8, Enter: 3, Backspace: 2 };
+  function onKey(down) {
+    return function (ev) {
+      if (ev.target && ev.target.tagName === "INPUT") return;
+      var n = map[ev.key];
+      if (n === undefined) return;
+      ev.preventDefault();
+      emu.key(n, down);
+    };
+  }
+  document.addEventListener("keydown", onKey(true), false);
+  document.addEventListener("keyup", onKey(false), false);
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { emu.flushSave(); emu.suspendAudio(); } else { emu.resumeAudio(); }
+  }, false);
+
+  log("UA: " + navigator.userAgent);
+})();
+</script>
+</body>
+</html>

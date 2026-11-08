@@ -7,7 +7,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.6.0"; // ต้องตรงกับ CACHE_VERSION ใน sw.js
+  var VERSION = "0.6.2"; // ต้องตรงกับ CACHE_VERSION ใน sw.js
   var APP_NAME = "POCKET BETTER X";
   var BIOS_SIZE = 16384;
   var AUTOSAVE_MS = 30000;

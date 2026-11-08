@@ -289,6 +289,16 @@ THUMBInstructionSet.prototype.executeDecoded = function () {
         case 81:
             this.BVC();
             break;
+        //POCKET BETTER X: hi-register ops with two low registers (H1=H2=0)
+        case 83:
+            this.ADDH_LL();
+            break;
+        case 84:
+            this.CMPH_LL();
+            break;
+        case 85:
+            this.MOVH_LL();
+            break;
         default:
             this.UNDEFINED();
     }
@@ -807,6 +817,32 @@ THUMBInstructionSet.prototype.CMPH_HH = function () {
     var operand1 = this.readHighRegister(this.execute | 0) | 0;
     var operand2 = this.readHighRegister(this.execute >> 3) | 0;
     this.branchFlags.setCMPFlags(operand1 | 0, operand2 | 0);
+    //Update PC:
+    this.incrementProgramCounter();
+}
+/*
+ POCKET BETTER X patch: ARMv4T calls ADD/CMP/MOV (format 5) with H1=H2=0 "unpredictable",
+ but the ARM7TDMI in the GBA executes them like the hi-register forms (mGBA does the same).
+ Newer compilers emit e.g. 0x4603 "mov r3, r0"; IodineGBA treated it as UNDEFINED and games hung.
+ */
+THUMBInstructionSet.prototype.ADDH_LL = function () {
+    var operand1 = this.read0OffsetLowRegister() | 0;
+    var operand2 = this.read3OffsetLowRegister() | 0;
+    //Flags are not changed by the hi-register form:
+    this.write0OffsetLowRegister(((operand1 | 0) + (operand2 | 0)) | 0);
+    //Update PC:
+    this.incrementProgramCounter();
+}
+THUMBInstructionSet.prototype.CMPH_LL = function () {
+    var operand1 = this.read0OffsetLowRegister() | 0;
+    var operand2 = this.read3OffsetLowRegister() | 0;
+    this.branchFlags.setCMPFlags(operand1 | 0, operand2 | 0);
+    //Update PC:
+    this.incrementProgramCounter();
+}
+THUMBInstructionSet.prototype.MOVH_LL = function () {
+    //Flags are not changed by the hi-register form:
+    this.write0OffsetLowRegister(this.read3OffsetLowRegister() | 0);
     //Update PC:
     this.incrementProgramCounter();
 }
@@ -1366,11 +1402,11 @@ function compileTHUMBInstructionDecodeMap() {
     //43
     generateLowMap4(21, 31, 66, 68);
     //44
-    generateLowMap4(82, 61, 27, 77);
+    generateLowMap4(83, 61, 27, 77);
     //45
-    generateLowMap4(82, 58, 63, 78);
+    generateLowMap4(84, 58, 63, 78);
     //46
-    generateLowMap4(82, 2, 16, 54);
+    generateLowMap4(85, 2, 16, 54);
     //47
     generateLowMap4(37, 49, 82, 82);
     //48-4F

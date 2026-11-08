@@ -3,7 +3,7 @@
  * precache ทุกไฟล์ของแอป (รวม core/ และ BIOS) แบบ cache-first และลบแคชเก่า
  * ต้องเพิ่ม CACHE_VERSION พร้อมกับ VERSION ใน js/app.js ทุกครั้งที่ deploy
  */
-var CACHE_VERSION = "pbx-0.6.0";
+var CACHE_VERSION = "pbx-0.6.2";
 
 var FILES = [
   "./",
@@ -103,11 +103,13 @@ self.addEventListener("fetch", function (event) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // หน้าเว็บ (รวม ?query) → index.html ในแคช
+  // หน้าเว็บ: หน้าที่ขอ (จากแคช ไม่สน ?query) → เน็ต → index.html ตอนออฟไลน์
   if (req.mode === "navigate") {
     event.respondWith(
-      caches.match("index.html").then(function (hit) {
-        return hit || fetch(req);
+      caches.match(req, { ignoreSearch: true }).then(function (hit) {
+        return hit || fetch(req).catch(function () {
+          return caches.match("index.html");
+        });
       })
     );
     return;

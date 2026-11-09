@@ -18,6 +18,22 @@
 
   var TICK_MS = 16; // ตรงกับ timerIntervalRate ของแกน
 
+  // ตารางแปลงสี 15 บิตของ GBA → RGBA 32 บิต (little-endian: ABGR) ใช้วาดภาพรอบเดียว
+  var LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+  var RGBA_LUT = null;
+  function rgbaLut() {
+    if (!RGBA_LUT) {
+      RGBA_LUT = new Uint32Array(0x8000);
+      for (var c = 0; c < 0x8000; c++) {
+        var r = (c & 0x1F) << 3;
+        var g = ((c >> 5) & 0x1F) << 3;
+        var b = ((c >> 10) & 0x1F) << 3;
+        RGBA_LUT[c] = (0xFF000000 | (b << 16) | (g << 8) | r) >>> 0;
+      }
+    }
+    return RGBA_LUT;
+  }
+
   // =========================================================
   // Save State (ทดลอง): serialize กราฟออบเจกต์ของ I.IOCore
   //  - id ของออบเจกต์/typed array = path ที่เจอครั้งแรกจากการไล่แบบ BFS เริ่มที่ "IOCore"
@@ -297,8 +313,25 @@
         this.drawContextOnscreen.putImageData(this.canvasBuffer, 0, 0);
       };
       this.gfx.attachCanvas(canvas);
+      // ความเร็ว: แปลงสีจาก frameBuffer ของแกนลง ImageData โดยตรงรอบเดียว
+      // (เดิม: แปลงเป็น RGB → คัดลอก → แปลงเป็น RGBA อีกรอบ)
+      this.rgba32 = null;
+      this.lut = null;
+      this.frameDirty = false;
+      if (LITTLE_ENDIAN && this.gfx.canvasBuffer && this.gfx.canvasBuffer.data && this.gfx.canvasBuffer.data.buffer) {
+        this.rgba32 = new Uint32Array(this.gfx.canvasBuffer.data.buffer);
+        this.lut = rgbaLut();
+        this.gfx.requestDraw = function () {
+          if (self.frameDirty && this.graphicsFound) {
+            self.frameDirty = false;
+            this.drawContextOnscreen.putImageData(this.canvasBuffer, 0, 0);
+          }
+        };
+      }
       I.attachGraphicsFrameHandler(this.gfx);
       I.toggleSkipBootROM(true);
+      // SPEC ข้อ 9: ให้แกนลดความเร็วเป้าหมายเองเมื่อเครื่องทำไม่ทัน (เสียงไม่ขาด ไม่เร่งแซงจนกระตุก)
+      I.toggleDynamicSpeed(true);
       this.I = I;
 
       this._tick = function () {
@@ -337,7 +370,14 @@
         else origRSL.call(this);
       };
       r.prepareFrame = function () {
-        if (!self.skipThis) origPF.call(this);
+        if (self.skipThis) return;
+        if (self.rgba32) {
+          var fb = this.frameBuffer, out = self.rgba32, lut = self.lut;
+          for (var i = 0; i < 38400; i = (i + 1) | 0) out[i] = lut[fb[i] & 0x7FFF];
+          self.frameDirty = true;
+        } else {
+          origPF.call(this);
+        }
       };
       r.ensureFraming = function () {
         origEF.call(this);
@@ -442,7 +482,13 @@
     }
 
     setSpeed(x) {
-      this.I.setSpeed(+x || 1);
+      x = +x || 1;
+      if (x === 1) {
+        this.I.toggleDynamicSpeed(true);   // กลับความเร็วปกติ + ปรับเองอัตโนมัติ
+      } else {
+        this.I.toggleDynamicSpeed(false);  // แกนไม่รับ setSpeed ขณะเปิด dynamicSpeed
+        this.I.setSpeed(x);
+      }
     }
 
     getSpeed() {

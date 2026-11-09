@@ -3,7 +3,7 @@
  * precache ทุกไฟล์ของแอป (รวม core/ และ BIOS) แบบ cache-first และลบแคชเก่า
  * ต้องเพิ่ม CACHE_VERSION พร้อมกับ VERSION ใน js/app.js ทุกครั้งที่ deploy
  */
-var CACHE_VERSION = "pbx-0.6.2";
+var CACHE_VERSION = "pbx-0.7.0";
 
 var FILES = [
   "./",

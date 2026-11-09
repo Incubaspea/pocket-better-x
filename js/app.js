@@ -7,7 +7,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.6.2"; // ต้องตรงกับ CACHE_VERSION ใน sw.js
+  var VERSION = "0.7.0"; // ต้องตรงกับ CACHE_VERSION ใน sw.js
   var APP_NAME = "POCKET BETTER X";
   var BIOS_SIZE = 16384;
   var AUTOSAVE_MS = 30000;
@@ -15,6 +15,7 @@
   var K = PBX.KEY;
   var $ = function (id) { return document.getElementById(id); };
 
+  var root = $("root");
   var library = $("library");
   var player = $("player");
   var bezel = $("bezel");
@@ -39,7 +40,7 @@
     showSpeed: getPref("showSpeed", true),
     fastSpeed: getPref("fastSpeed", 2),
     sound: getPref("sound", true),
-    eco: getPref("eco", false),
+    eco: getPref("ecoMode", "auto"), // "auto" | "off" | "on"
     rewind: getPref("rewind", false)
   };
 
@@ -572,6 +573,7 @@
   var autosaveTimer = 0;
 
   emu.onSpeed(function (p) {
+    autoEcoTick(p);
     if (!prefs.showSpeed) return;
     var r = Math.round(p);
     spdEl.textContent = r + "%";
@@ -581,10 +583,47 @@
       spdEl.className = slow ? "slow" : "";
     }
   });
-  emu.onStatus(function (on) { $("led").className = on ? "on" : ""; });
+  emu.onStatus(function (on) {
+    $("led").className = on ? "on" : "";
+    if (on) ecoHoldUntil = Date.now() + 4000; // ช่วงอุ่นเครื่องหลังเริ่ม/เล่นต่อ: ไม่ปรับโหมดประหยัด
+  });
   spdEl.className = prefs.showSpeed ? "" : "hide";
   emu.setAudioEnabled(prefs.sound);
-  emu.setFrameSkip(prefs.eco ? 1 : 0);
+  applyEco();
+
+  // ---------- โหมดประหยัดอัตโนมัติ ----------
+  // แกนรายงานความเร็วทุก 0.5 วินาที: ช้ากว่า 93% ติดกัน 1.5 วิ → ข้ามเฟรมเพิ่ม (สูงสุด 2)
+  // เต็ม 99% ขึ้นไปติดกัน 20 วิ → ลดการข้ามลง 1 ขั้น (ช้า ๆ เพื่อไม่ให้สลับไปมาจนกระตุก)
+  var autoSkip = 0, lowRuns = 0, highRuns = 0, ecoHoldUntil = 0;
+  function ecoLevel() {
+    if (prefs.eco === "on") return 1;
+    if (prefs.eco === "auto") return autoSkip;
+    return 0;
+  }
+  function applyEco() { emu.setFrameSkip(ecoLevel()); }
+  function resetAutoEco() {
+    autoSkip = 0;
+    lowRuns = highRuns = 0;
+    applyEco();
+  }
+  function autoEcoTick(p) {
+    if (prefs.eco !== "auto" || !emu.running || fast || document.hidden || Date.now() < ecoHoldUntil) {
+      lowRuns = highRuns = 0;
+      return;
+    }
+    if (p < 93) {
+      highRuns = 0;
+      if (++lowRuns >= 3 && autoSkip < 2) { autoSkip++; lowRuns = 0; applyEco(); }
+    } else if (p >= 99) {
+      lowRuns = 0;
+      if (++highRuns >= 40 && autoSkip > 0) { autoSkip--; highRuns = 0; applyEco(); }
+    } else {
+      lowRuns = highRuns = 0;
+    }
+  }
+  function ecoLabel() {
+    return "โหมดประหยัด: " + (prefs.eco === "auto" ? "อัตโนมัติ" : prefs.eco === "on" ? "เปิด" : "ปิด");
+  }
 
   emu.setSaveImport(function (name, onLoaded, onFail) {
     if (!curSave || !curSave.data) { onFail(); return; }
@@ -643,6 +682,7 @@
       stateMeta = {};
       loadStateMeta(m.id);
       startRewindCapture();
+      resetAutoEco();
       toastEl.className = "";
     }).catch(function (err) {
       toast("เปิดเกมไม่ได้: " + err.message, 4000);
@@ -848,12 +888,13 @@
         layout();
         setTile(el, "สเกลจำนวนเต็ม", prefs.intScale);
       } },
-      { icon: "🔋", label: "โหมดประหยัด", cls: prefs.eco ? "on" : "", fn: function (el) {
-        prefs.eco = !prefs.eco;
-        setPref("eco", prefs.eco);
-        emu.setFrameSkip(prefs.eco ? 1 : 0);
-        setTile(el, "โหมดประหยัด", prefs.eco);
-        toast(prefs.eco ? "โหมดประหยัด: วาดภาพเฟรมเว้นเฟรม" : "โหมดประหยัด: ปิด");
+      { icon: "🔋", label: ecoLabel(), cls: prefs.eco !== "off" ? "on" : "", fn: function (el) {
+        prefs.eco = prefs.eco === "auto" ? "off" : prefs.eco === "off" ? "on" : "auto";
+        setPref("ecoMode", prefs.eco);
+        resetAutoEco();
+        setTile(el, ecoLabel(), prefs.eco !== "off");
+        toast(prefs.eco === "auto" ? "ข้ามการวาดภาพเองเมื่อเครื่องช้า" :
+          prefs.eco === "on" ? "วาดภาพเฟรมเว้นเฟรมตลอด" : "วาดภาพทุกเฟรม", 2500);
       } },
       { icon: "⏪", label: "ย้อนเวลา", cls: prefs.rewind ? "on" : "", fn: function (el) {
         prefs.rewind = !prefs.rewind;
@@ -911,7 +952,34 @@
   // =========================================================
   // layout(): จอ 240x160 ใหญ่ที่สุดที่ไม่ทับปุ่ม
   // =========================================================
-  var BEZEL_PAD_X = 12, BEZEL_HEAD = 26, BEZEL_PAD_B = 12;
+  var BEZEL_PAD_X = 6, BEZEL_HEAD = 18, BEZEL_PAD_B = 6;
+
+  // =========================================================
+  // แนวนอนเสมอ: ถ้าถือเครื่องแนวตั้ง (หรือล็อกการหมุนจอไว้) หมุน #root -90° ให้เอง
+  // iOS 12 ล็อกการหมุนจอจากเว็บไม่ได้ จึงหมุนเนื้อหาแทน
+  // =========================================================
+  var rotated = false;
+  var vw = window.innerWidth, vh = window.innerHeight; // ขนาด "แนวนอน" ที่ใช้วางหน้าจอ
+  function applyOrientation() {
+    var W = window.innerWidth, H = window.innerHeight;
+    rotated = H > W;
+    if (rotated) {
+      root.style.width = H + "px";
+      root.style.height = W + "px";
+      // หมุนทวนเข็ม: ด้านบนของหน้าจออยู่ฝั่งซ้ายของเครื่อง (ปุ่มโฮมอยู่ขวามือ)
+      var tf = "translate(0px," + H + "px) rotate(-90deg)";
+      root.style.webkitTransform = tf;
+      root.style.transform = tf;
+      vw = H; vh = W;
+    } else {
+      root.style.width = "";
+      root.style.height = "";
+      root.style.webkitTransform = "";
+      root.style.transform = "";
+      vw = W; vh = H;
+    }
+    root.className = vw >= 800 ? "wide" : "";
+  }
   var dpadRect = null;
 
   function safeInsets() {
@@ -926,23 +994,14 @@
 
   function layout() {
     if (player.className === "hide") return;
-    var W = window.innerWidth;
-    var H = window.innerHeight;
+    var W = vw;
+    var H = vh;
     var s = safeInsets();
-    var portrait = H > W;
-    var areaL, areaT, areaW, areaH;
-
-    if (portrait) {
-      areaL = s.l + 14;
-      areaT = s.t + 50;
-      areaW = W - s.l - s.r - 28;
-      areaH = H - areaT - (s.b + 340); // พื้นที่ปุ่มด้านล่างสูง ~340px
-    } else {
-      areaL = s.l + 166;               // ขอบขวาของ D-pad + ระยะห่าง
-      areaT = s.t + 44;                // ใต้ชิป/ปุ่มไหล่
-      areaW = W - areaL - (s.r + 178); // ขอบซ้ายของปุ่ม B + ระยะห่าง
-      areaH = H - areaT - (s.b + 34);  // เหนือชื่อแบรนด์
-    }
+    // จออยู่ระหว่าง D-pad (ซ้าย) กับ A/B (ขวา) ส่วน L/R และชิปอยู่ในแถบข้างจึงใช้ความสูงได้เกือบเต็ม
+    var areaL = s.l + 132;               // ขอบขวาของ D-pad/ปุ่ม L + ระยะห่าง
+    var areaT = s.t + 8;
+    var areaW = W - areaL - (s.r + 142); // ขอบซ้ายของปุ่ม B + ระยะห่าง
+    var areaH = H - areaT - (s.b + 30);  // เหนือชื่อแบรนด์
 
     var maxW = areaW - BEZEL_PAD_X * 2;
     var maxH = areaH - BEZEL_HEAD - BEZEL_PAD_B;
@@ -954,7 +1013,7 @@
     var bw = sw + BEZEL_PAD_X * 2;
     var bh = sh + BEZEL_HEAD + BEZEL_PAD_B;
     var bl = Math.round(areaL + (areaW - bw) / 2);
-    var bt = portrait ? areaT : Math.round(areaT + Math.max(0, areaH - bh) * 0.25);
+    var bt = Math.round(areaT + Math.max(0, areaH - bh) / 2);
 
     bezel.style.left = bl + "px";
     bezel.style.top = bt + "px";
@@ -972,9 +1031,10 @@
 
   var layoutTimer = 0;
   function layoutSoon() {
+    applyOrientation();
     layout();
     clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(layout, 350); // iOS อัปเดตขนาดช้าหลังหมุนจอ
+    layoutTimer = setTimeout(function () { applyOrientation(); layout(); }, 350); // iOS อัปเดตขนาดช้าหลังหมุนจอ
   }
   window.addEventListener("resize", layoutSoon, false);
   window.addEventListener("orientationchange", layoutSoon, false);
@@ -1037,6 +1097,7 @@
     if (!dpadRect) return 0;
     var dx = x - dpadRect.cx;
     var dy = y - dpadRect.cy;
+    if (rotated) { var t = dx; dx = -dy; dy = t; } // แปลงพิกัดจอ → พิกัดของหน้าที่ถูกหมุน -90°
     if (dx * dx + dy * dy < 100) return 0; // จุดตายตรงกลาง ~10px
     var a = Math.atan2(dy, dx) * 180 / Math.PI; // -180..180, y ลง = บวก
     var m = 0;
@@ -1123,6 +1184,31 @@
     e.preventDefault();
   }, { passive: false });
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, false);
+
+  // ตอนหมุนหน้า: เลื่อนรายการเองด้วย JS (การเลื่อนของ iOS 12 ในกล่องที่ถูกหมุนไม่แน่นอน)
+  var scrollTouch = null;
+  function findScroller(el) {
+    while (el && el !== root) {
+      if ((el.id === "library" || el.id === "sheet" || el.id === "dlg" || el.tagName === "TEXTAREA") &&
+          el.scrollHeight > el.clientHeight + 1) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+  root.addEventListener("touchstart", function (e) {
+    scrollTouch = null;
+    if (!rotated || e.touches.length !== 1) return;
+    var el = findScroller(e.target);
+    if (!el) return;
+    scrollTouch = { el: el, x: e.touches[0].clientX, top: el.scrollTop };
+  }, { passive: true });
+  root.addEventListener("touchmove", function (e) {
+    if (!rotated || !scrollTouch) return;
+    // หมุน -90°: แนวตั้งของเนื้อหา = แนวนอนของจอจริง
+    scrollTouch.el.scrollTop = scrollTouch.top - (e.touches[0].clientX - scrollTouch.x);
+    e.preventDefault();
+  }, { passive: false });
+  root.addEventListener("touchend", function () { scrollTouch = null; }, false);
 
   // ---------- เมาส์ (ทดสอบบนคอม) ----------
   var mouseDpad = false;
@@ -1326,7 +1412,9 @@
     writeState: function (slot) { return writeState(slot); },
     readState: function (slot) { return readState(slot); },
     rewind: { begin: function () { beginRewind(); }, end: function () { endRewind(); }, ring: function () { return ring; } },
-    layout: layout
+    layout: layout,
+    eco: function () { return { mode: prefs.eco, level: ecoLevel() }; },
+    rotated: function () { return rotated; }
   };
 
   // ออฟไลน์: Service Worker (iOS 11.3+)
@@ -1349,5 +1437,6 @@
     renderLibrary();
     dialog({ title: "เปิดฐานข้อมูลไม่ได้", text: err.message + "\nถ้าเปิดในโหมดส่วนตัว (Private) ให้ปิดโหมดนี้ก่อน" });
   });
+  applyOrientation();
   renderLibrary();
 })();

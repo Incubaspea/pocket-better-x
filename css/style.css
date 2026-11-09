@@ -18,6 +18,16 @@ html, body {
 }
 body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 
+/* ทุกอย่างอยู่ใน #root: ถ้าถือเครื่องแนวตั้ง js/app.js จะหมุน #root -90° ให้เป็นแนวนอนเสมอ */
+#root {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  -webkit-transform-origin: 0 0;
+  transform-origin: 0 0;
+}
+
 /* ---------- ตัวเครื่อง ---------- */
 #player {
   position: absolute;
@@ -34,14 +44,14 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 /* ปุ่มที่กดได้ */
 [data-key], .chip, #dpad { cursor: pointer; }
 
-/* ---------- L / R ---------- */
+/* ---------- L / R (มุมบน) ---------- */
 .shoulder {
   position: absolute;
   top: 8px;
-  width: 120px;
-  height: 29px;
-  line-height: 29px;
-  border-radius: 15px;
+  width: 112px;
+  height: 28px;
+  line-height: 28px;
+  border-radius: 14px;
   background: #151a26;
   box-shadow: 0 3px 0 #0e121b;
   color: #8d99b4;
@@ -49,53 +59,45 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   font-size: 13px;
   text-align: center;
 }
-#btnL { left: 14px; left: calc(14px + env(safe-area-inset-left)); }
-#btnR { right: 14px; right: calc(14px + env(safe-area-inset-right)); }
+#btnL { left: 12px; left: calc(12px + env(safe-area-inset-left)); }
+#btnR { right: 12px; right: calc(12px + env(safe-area-inset-right)); }
 .shoulder.on { background: #0c1018; box-shadow: 0 1px 0 #0e121b; color: #fff; transform: translateY(2px); }
 
-/* ---------- ชิปด้านบน ---------- */
-#chips {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  width: 260px;
-  margin-left: -130px;
-  height: 31px;
-  text-align: center;
-  white-space: nowrap;
-  font-size: 0;
-}
+/* ---------- ชิป: ☰ ใต้ L, ⏪ ▶▶ ใต้ R (ให้จอกว้างได้เต็มที่) ---------- */
+#chips { position: absolute; top: 0; left: 0; right: 0; height: 0; }
 .chip {
-  display: inline-block;
-  vertical-align: top;
-  height: 31px;
-  line-height: 31px;
-  padding: 0 15px;
-  margin: 0 4px;
-  border-radius: 16px;
+  position: absolute;
+  top: 46px;
+  height: 30px;
+  line-height: 30px;
+  padding: 0 13px;
+  border-radius: 15px;
   background: rgba(255, 255, 255, 0.10);
   color: #e8ecf5;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
-#chipRew { color: #ff8a5c; }
+#chipMenu { left: 12px; left: calc(12px + env(safe-area-inset-left)); }
+#chipFast { right: 12px; right: calc(12px + env(safe-area-inset-right)); width: 26px; text-align: center; }
+#chipRew { right: 70px; right: calc(70px + env(safe-area-inset-right)); width: 18px; text-align: center; color: #ff8a5c; }
 .chip.on { background: #ff6b4a; color: #fff; }
 .chip.off { opacity: 0.45; }
 
 /* ---------- กรอบจอ (ตำแหน่ง/ขนาดคำนวณใน layout()) ---------- */
 #bezel {
   position: absolute;
-  left: 178px; top: 44px; width: 312px; height: 226px;
+  left: 132px; top: 37px; width: 393px; height: 278px;
   background: #10141d;
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
 }
 #bezelHead {
   position: absolute;
-  left: 12px; right: 12px; top: 0;
-  height: 26px;
-  line-height: 26px;
-  font-size: 9px;
+  left: 10px; right: 10px; top: 0;
+  height: 18px;
+  line-height: 18px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 2px;
   color: #6d7a95;
@@ -104,13 +106,13 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 }
 #led {
   display: inline-block;
-  width: 6px; height: 6px;
+  width: 5px; height: 5px;
   border-radius: 3px;
   background: #40202a;
   vertical-align: middle;
-  margin: -2px 6px 0 0;
+  margin: -2px 5px 0 0;
 }
-#led.on { background: #ff3b30; box-shadow: 0 0 5px #ff3b30; }
+#led.on { background: #ff3b30; box-shadow: 0 0 4px #ff3b30; }
 .pwr { vertical-align: middle; }
 #stripe {
   display: inline-block;
@@ -131,7 +133,7 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 }
 #screenBox {
   position: absolute;
-  left: 12px; top: 26px; width: 288px; height: 192px;
+  left: 6px; top: 18px; width: 381px; height: 254px;
   background: #000;
   overflow: hidden;
 }
@@ -156,13 +158,13 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 #spd.hide { display: none; }
 #spd.slow { color: #ffcc33; }
 
-/* ---------- D-pad ---------- */
+/* ---------- D-pad (ซ้าย) ---------- */
 #dpad {
   position: absolute;
-  width: 120px; height: 120px;
-  left: 30px; left: calc(30px + env(safe-area-inset-left));
+  width: 112px; height: 112px;
+  left: 12px; left: calc(12px + env(safe-area-inset-left));
   top: 50%;
-  margin-top: -48px;
+  margin-top: -40px;
 }
 #dpad .dv, #dpad .dh {
   position: absolute;
@@ -170,63 +172,64 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   border-radius: 7px;
   box-shadow: 0 4px 0 #0e121b;
 }
-#dpad .dv { left: 41px; top: 0; width: 38px; height: 120px; }
-#dpad .dh { left: 0; top: 41px; width: 120px; height: 38px; }
-#dpad .dhub { position: absolute; left: 50px; top: 50px; width: 20px; height: 20px; border-radius: 10px; background: #1b2131; }
+#dpad .dv { left: 38px; top: 0; width: 36px; height: 112px; }
+#dpad .dh { left: 0; top: 38px; width: 112px; height: 36px; }
+#dpad .dhub { position: absolute; left: 46px; top: 46px; width: 20px; height: 20px; border-radius: 10px; background: #1b2131; }
 /* ไฮไลต์ทิศที่กด */
 #dpad.u .dv { background: linear-gradient(180deg, #2b3550 0%, #151a26 40%); }
 #dpad.d .dv { background: linear-gradient(0deg, #2b3550 0%, #151a26 40%); }
 #dpad.l .dh { background: linear-gradient(90deg, #2b3550 0%, #151a26 40%); }
 #dpad.r .dh { background: linear-gradient(270deg, #2b3550 0%, #151a26 40%); }
 
-/* ---------- A / B ---------- */
+/* ---------- A / B (ขวา, A สูงกว่า) ---------- */
 .face {
   position: absolute;
-  width: 60px; height: 60px;
-  border-radius: 30px;
+  width: 58px; height: 58px;
+  border-radius: 29px;
   background: radial-gradient(circle at 40% 30%, #ff8a68 0%, #ff6b4a 55%, #f05a3a 100%);
   box-shadow: 0 5px 0 #b8432c;
 }
 .face.on { box-shadow: 0 1px 0 #b8432c; transform: translateY(4px); background: #e85a3b; }
-#btnA { right: 30px; right: calc(30px + env(safe-area-inset-right)); top: 50%; margin-top: -62px; }
-#btnB { right: 110px; right: calc(110px + env(safe-area-inset-right)); top: 50%; margin-top: -18px; }
-.faceLabel { position: absolute; width: 60px; text-align: center; color: #8d99b4; font-weight: 700; font-size: 13px; pointer-events: none; }
-#lblA { right: 30px; right: calc(30px + env(safe-area-inset-right)); top: 50%; margin-top: 4px; }
-#lblB { right: 110px; right: calc(110px + env(safe-area-inset-right)); top: 50%; margin-top: 48px; }
+#btnA { right: 12px; right: calc(12px + env(safe-area-inset-right)); top: 50%; margin-top: -66px; }
+#btnB { right: 76px; right: calc(76px + env(safe-area-inset-right)); top: 50%; margin-top: -12px; }
+.faceLabel { position: absolute; width: 58px; text-align: center; color: #8d99b4; font-weight: 700; font-size: 12px; pointer-events: none; }
+#lblA { right: 12px; right: calc(12px + env(safe-area-inset-right)); top: 50%; margin-top: -2px; }
+#lblB { right: 76px; right: calc(76px + env(safe-area-inset-right)); top: 50%; margin-top: 52px; }
 /* จุดกด A+B พร้อมกัน */
 #btnAB {
   position: absolute;
   width: 22px; height: 22px;
   border-radius: 11px;
+  box-sizing: border-box;
   background: rgba(255, 107, 74, 0.25);
   border: 2px solid rgba(255, 107, 74, 0.45);
-  right: 88px; right: calc(88px + env(safe-area-inset-right));
+  right: 62px; right: calc(62px + env(safe-area-inset-right));
   top: 50%;
-  margin-top: -22px;
+  margin-top: -21px;
 }
 #btnAB.on { background: #ff6b4a; }
 
-/* ---------- Select / Start ---------- */
+/* ---------- Select / Start (ขวาล่าง) ---------- */
 .pill {
   position: absolute;
   width: 46px; height: 16px;
   border-radius: 8px;
   background: #151a26;
   box-shadow: 0 3px 0 #0e121b;
-  bottom: 26px;
+  bottom: 24px;
 }
 .pill.on { box-shadow: 0 1px 0 #0e121b; transform: translateY(2px); }
-#btnSelect { right: 130px; right: calc(130px + env(safe-area-inset-right)); }
-#btnStart { right: 68px; right: calc(68px + env(safe-area-inset-right)); }
-.pillLabel { position: absolute; width: 46px; bottom: 10px; text-align: center; font-size: 8px; letter-spacing: 1px; font-weight: 700; color: #59657f; pointer-events: none; }
-#lblSelect { right: 130px; right: calc(130px + env(safe-area-inset-right)); }
-#lblStart { right: 68px; right: calc(68px + env(safe-area-inset-right)); }
+#btnSelect { right: 68px; right: calc(68px + env(safe-area-inset-right)); }
+#btnStart { right: 12px; right: calc(12px + env(safe-area-inset-right)); }
+.pillLabel { position: absolute; width: 46px; bottom: 9px; text-align: center; font-size: 8px; letter-spacing: 1px; font-weight: 700; color: #59657f; pointer-events: none; }
+#lblSelect { right: 68px; right: calc(68px + env(safe-area-inset-right)); }
+#lblStart { right: 12px; right: calc(12px + env(safe-area-inset-right)); }
 
 /* ---------- ลำโพง / แบรนด์ ---------- */
 #speaker {
   position: absolute;
-  left: 42px; left: calc(42px + env(safe-area-inset-left));
-  bottom: 16px;
+  left: 30px; left: calc(30px + env(safe-area-inset-left));
+  bottom: 12px;
   width: 63px; height: 27px;
   background-image: radial-gradient(circle, #0e1320 2.2px, rgba(0, 0, 0, 0) 2.6px);
   background-size: 9px 9px;
@@ -237,9 +240,9 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   left: 50%;
   width: 240px;
   margin-left: -120px;
-  bottom: 10px;
+  bottom: 7px;
   text-align: center;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   font-style: italic;
   letter-spacing: 3px;
@@ -323,7 +326,6 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 .card {
   display: inline-block;
   vertical-align: top;
-  width: 46%;
   margin: 8px 2%;
   border-radius: 18px;
   overflow: hidden;
@@ -381,16 +383,8 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 .emptyText { font-size: 14px; line-height: 22px; }
 #libFoot { padding: 24px 16px 20px 16px; text-align: center; font-size: 12px; color: #7d89a6; }
 
-@media (max-width: 420px) {
-  #libBrand { font-size: 15px; letter-spacing: 1px; }
-  .addBtn { padding: 0 12px; margin-left: 8px; font-size: 15px; }
-}
-@media (orientation: landscape) {
-  .card { width: 29.3%; }
-}
-@media (orientation: landscape) and (min-width: 800px) {
-  .card { width: 21%; }
-}
+.card { width: 29.3%; }
+#root.wide .card { width: 21%; }
 
 /* =========================================================
    Bottom sheet
@@ -409,14 +403,9 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
-@media (orientation: landscape) {
-  #sheet { left: 50%; right: auto; width: 560px; max-width: 100%; margin-left: -280px; }
-}
-@media (orientation: landscape) and (max-width: 560px) {
-  #sheet { left: 0; margin-left: 0; width: 100%; }
-}
+#sheet { width: 580px; max-width: 100%; margin: 0 auto; }
 .grab { width: 40px; height: 5px; border-radius: 3px; background: #3a4766; margin: 0 auto 8px auto; }
-#sheetHead { position: relative; height: 44px; margin-bottom: 10px; }
+#sheetHead { position: relative; height: 40px; margin-bottom: 8px; }
 #sheetTitle { line-height: 44px; font-size: 19px; font-weight: 800; color: #fff; padding-right: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sheetClose {
   position: absolute; right: 0; top: 0;
@@ -430,9 +419,9 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
 .tile {
   display: inline-block;
   vertical-align: top;
-  width: 31.33%;
-  margin: 0 1% 10px 1%;
-  padding: 14px 4px 12px 4px;
+  width: 18%;
+  margin: 0 1% 8px 1%;
+  padding: 8px 2px;
   box-sizing: border-box;
   border-radius: 16px;
   background: #27314f;
@@ -440,22 +429,19 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   color: #fff;
   cursor: pointer;
 }
-@media (orientation: landscape) {
-  .tile { width: 23%; padding: 10px 4px; }
-}
-.tile .ti { font-size: 26px; line-height: 32px; }
-.tile .tl { font-size: 13px; font-weight: 700; line-height: 18px; margin-top: 4px; }
+.tile .ti { font-size: 22px; line-height: 28px; }
+.tile .tl { font-size: 12px; font-weight: 700; line-height: 16px; margin-top: 3px; }
 .tile.on { background: #ff6b4a; }
 .slotImg {
   display: block;
-  width: 72px; height: 48px;
+  width: 66px; height: 44px;
   margin: 0 auto;
   border-radius: 6px;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: pixelated;
 }
 .slotEmpty {
-  width: 72px; height: 48px; line-height: 48px;
+  width: 66px; height: 44px; line-height: 44px;
   margin: 0 auto;
   border-radius: 6px;
   border: 2px dashed #3d4a6b;
@@ -548,9 +534,7 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   -webkit-user-select: auto;
   user-select: auto;
 }
-@media (orientation: landscape) {
-  #shotImg { width: auto; height: 220px; max-height: 60vh; }
-}
+#shotImg { width: auto; height: 210px; }
 #shotHint { font-size: 13px; line-height: 19px; color: #b4bed3; margin: 10px 0 4px 0; }
 #shotBtns { font-size: 0; }
 #shotBtns .dbtn { margin: 6px 4px 0 4px; text-decoration: none; }
@@ -577,39 +561,3 @@ body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
   z-index: 50;
 }
 #toast.show { opacity: 1; }
-
-/* =========================================================
-   แนวตั้ง: จออยู่บน ปุ่มอยู่ล่าง และ L/R อยู่เหนือ D-pad กับ A/B
-   ========================================================= */
-@media (orientation: portrait) {
-  #chips {
-    left: 14px; right: 14px;
-    width: auto;
-    margin-left: 0;
-    top: 10px; top: calc(10px + env(safe-area-inset-top));
-    text-align: left;
-  }
-  #chipMenu { margin-left: 0; }
-  #chipRew { position: absolute; right: 68px; margin: 0; }
-  #chipFast { position: absolute; right: 0; margin: 0; }
-
-  .shoulder { top: auto; bottom: 300px; bottom: calc(300px + env(safe-area-inset-bottom)); width: 110px; }
-
-  #dpad { top: auto; margin-top: 0; left: 24px; bottom: 140px; bottom: calc(140px + env(safe-area-inset-bottom)); }
-
-  #btnA { top: auto; margin-top: 0; right: 24px; bottom: 192px; bottom: calc(192px + env(safe-area-inset-bottom)); }
-  #lblA { top: auto; margin-top: 0; right: 24px; bottom: 170px; bottom: calc(170px + env(safe-area-inset-bottom)); }
-  #btnB { top: auto; margin-top: 0; right: 104px; bottom: 148px; bottom: calc(148px + env(safe-area-inset-bottom)); }
-  #lblB { top: auto; margin-top: 0; right: 104px; bottom: 126px; bottom: calc(126px + env(safe-area-inset-bottom)); }
-  #btnAB { top: auto; margin-top: 0; right: 82px; bottom: 200px; bottom: calc(200px + env(safe-area-inset-bottom)); }
-
-  .pill { bottom: 66px; bottom: calc(66px + env(safe-area-inset-bottom)); }
-  #btnSelect { right: auto; left: 50%; margin-left: -56px; }
-  #btnStart { right: auto; left: 50%; margin-left: 10px; }
-  .pillLabel { bottom: 50px; bottom: calc(50px + env(safe-area-inset-bottom)); }
-  #lblSelect { right: auto; left: 50%; margin-left: -56px; }
-  #lblStart { right: auto; left: 50%; margin-left: 10px; }
-
-  #speaker { display: none; }
-  #brand { bottom: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
-}
